@@ -7,9 +7,10 @@ import { useAuth } from '../hooks/useAuth';
 
 const AdminOrders = () => {
   const { user } = useAuth();
-  const { orders, loading, fetchOrders, updateOrderStatus } = useOrdersStore();
+  const { orders, loading, fetchOrders } = useOrdersStore();
   const [adminOrders, setAdminOrders] = useState<Order[]>([]);
   const [adminLoading, setAdminLoading] = useState(true);
+  const [trackingInputs, setTrackingInputs] = useState<{[key: string]: string}>({});
 
   // Direct fetch for admin orders using service role to bypass RLS
   const fetchAdminOrders = async () => {
@@ -290,6 +291,59 @@ const AdminOrders = () => {
     return order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
 
+  // Handle tracking number input change
+  const handleTrackingInputChange = (orderId: string, value: string) => {
+    setTrackingInputs(prev => ({
+      ...prev,
+      [orderId]: value
+    }));
+  };
+
+  // Handle tracking number submission
+  const handleTrackingSubmit = async (orderId: string) => {
+    const trackingNumber = trackingInputs[orderId]?.trim();
+    
+    if (!trackingNumber) {
+      toast.error('Please enter a tracking number');
+      return;
+    }
+    
+    console.log('Submitting tracking number:', orderId, trackingNumber);
+    
+    try {
+      // Use the store function which handles localStorage and database updates
+      await useOrdersStore.getState().updateTrackingNumber(orderId, trackingNumber);
+      
+      // Clear the input after successful submission
+      setTrackingInputs(prev => ({
+        ...prev,
+        [orderId]: ''
+      }));
+      
+      // Refresh orders to show the updated tracking number
+      fetchAdminOrders();
+    } catch (error) {
+      console.error('Error in handleTrackingSubmit:', error);
+      // Error handling is done in the store function
+    }
+  };
+
+  // Update order status using the store function
+  const handleStatusChange = async (orderId: string, status: Order['status']) => {
+    console.log('Updating order status:', orderId, status);
+    
+    try {
+      // Use the store function which handles localStorage and database updates
+      await useOrdersStore.getState().updateOrderStatus(orderId, status);
+      
+      // Refresh orders to show the updated status
+      fetchAdminOrders();
+    } catch (error) {
+      console.error('Error in handleStatusChange:', error);
+      // Error handling is done in the store function
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <h2 className="text-2xl font-bold text-gray-900 mb-8">All Orders ({displayOrders.length})</h2>
@@ -316,11 +370,19 @@ const AdminOrders = () => {
                   <span className="font-medium">Items Ordered:</span>{' '}
                   {order.items?.reduce((acc, item) => acc + item.quantity, 0) || 0}
                 </p>
+                
+                {/* Display tracking number if available */}
+                {order.tracking_number && (
+                  <p className="text-sm mt-2">
+                    <span className="font-medium">Tracking Number:</span>{' '}
+                    <span className="text-blue-600">{order.tracking_number}</span>
+                  </p>
+                )}
               </div>
               <div className="flex flex-col items-end space-y-2">
                 <select
                   value={order.status}
-                  onChange={(e) => updateOrderStatus(order.id, e.target.value as Order['status'])}
+                  onChange={(e) => handleStatusChange(order.id, e.target.value as Order['status'])}
                   className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
                 >
                   <option value="pending">Pending</option>
@@ -342,6 +404,30 @@ const AdminOrders = () => {
                 </span>
               </div>
             </div>
+
+            {/* Tracking number input field for shipped orders */}
+            {order.status === 'shipped' && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-md">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">
+                  {order.tracking_number ? 'Update Tracking Number' : 'Add Tracking Number'}
+                </h4>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={trackingInputs[order.id] || ''}
+                    onChange={(e) => handleTrackingInputChange(order.id, e.target.value)}
+                    placeholder={order.tracking_number || 'Enter tracking number'}
+                    className="flex-grow rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  />
+                  <button
+                    onClick={() => handleTrackingSubmit(order.id)}
+                    className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="p-4 bg-gray-50 rounded-md">

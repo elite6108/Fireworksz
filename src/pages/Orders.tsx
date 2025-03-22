@@ -6,6 +6,32 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import type { Order } from '../types';
 
+// Local storage keys
+const LOCAL_STATUS_KEY = 'fireworks-order-statuses';
+const LOCAL_TRACKING_KEY = 'fireworks-tracking-numbers';
+
+// Helper functions for local order status storage
+const getLocalOrderStatuses = (): Record<string, Order['status']> => {
+  try {
+    const stored = localStorage.getItem(LOCAL_STATUS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('Error reading local order statuses:', error);
+    return {};
+  }
+};
+
+// Helper functions for local tracking number storage
+const getLocalTrackingNumbers = (): Record<string, string> => {
+  try {
+    const stored = localStorage.getItem(LOCAL_TRACKING_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('Error reading local tracking numbers:', error);
+    return {};
+  }
+};
+
 export function Orders() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -148,7 +174,8 @@ export function Orders() {
               stock,
               created_at
             )
-          )
+          ),
+          tracking_number
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -171,16 +198,31 @@ export function Orders() {
         });
       });
 
+      // Get local order statuses and tracking numbers
+      const localOrderStatuses = getLocalOrderStatuses();
+      const localTrackingNumbers = getLocalTrackingNumbers();
+      
+      console.log('Local order statuses:', localOrderStatuses);
+      console.log('Local tracking numbers:', localTrackingNumbers);
+
       // Transform the data to match our Order interface
       const transformedOrders = (orders || []).map(order => {
         // Extract contact info from shipping_address if email/phone are not directly on the order
         const email = order.email || (order.shipping_address && order.shipping_address.email) || 'N/A';
         const phone = order.phone || (order.shipping_address && order.shipping_address.phone) || 'N/A';
         
+        // Override with local storage values if available
+        const status = localOrderStatuses[order.id] || order.status;
+        const tracking_number = localTrackingNumbers[order.id] || order.tracking_number;
+        
         return {
           ...order,
           email,
           phone,
+          // Use local status if available
+          status,
+          // Use local tracking number if available
+          tracking_number,
           shipping_address: order.shipping_address || {
             full_name: 'N/A',
             address: 'N/A',
@@ -329,6 +371,17 @@ export function Orders() {
                   {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                 </span>
               </div>
+
+              {/* Display tracking number for shipped or delivered orders */}
+              {(order.status === 'shipped' || order.status === 'delivered') && order.tracking_number && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-md">
+                  <h4 className="text-sm font-medium text-gray-900 mb-1">Tracking Information</h4>
+                  <p className="text-sm">
+                    <span className="font-medium">Tracking Number:</span>{' '}
+                    <span className="text-blue-600">{order.tracking_number}</span>
+                  </p>
+                </div>
+              )}
 
               {/* Contact Information */}
               <div className="mb-4 bg-gray-50 p-3 rounded">

@@ -12,9 +12,10 @@
   "dependencies": {
     "@stripe/react-stripe-js": "^3.5.1",
     "@stripe/stripe-js": "^6.1.0",
-    "@supabase/supabase-js": "^2.39.7",
+    "@supabase/supabase-js": "^2.49.1",
     "@types/uuid": "^10.0.0",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
     "lucide-react": "^0.344.0",
     "node-fetch": "^2.7.0",
     "react": "^18.3.1",

@@ -47,6 +47,7 @@ export interface Order {
     name: string;
     cost: number;
   } | null;
+  tracking_number?: string;
   created_at: string;
   updated_at: string;
   email: string;
