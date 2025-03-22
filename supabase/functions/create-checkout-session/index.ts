@@ -28,7 +28,18 @@ serve(async (req) => {
 
   try {
     // Parse the request body
-    const { line_items, success_url, cancel_url, order_id, user_id, payment_id } = await req.json();
+    const requestData = await req.json();
+    const { 
+      line_items, 
+      success_url, 
+      cancel_url, 
+      order_id, 
+      user_id, 
+      payment_id,
+      discount_info
+    } = requestData;
+
+    console.log('Request body:', requestData);
 
     // Validate required parameters
     if (!line_items || !Array.isArray(line_items) || line_items.length === 0) {
@@ -57,19 +68,55 @@ serve(async (req) => {
       );
     }
 
+    // Create metadata object with proper typing
+    const metadata: Record<string, string> = {
+      order_id: order_id.toString(),
+      user_id: user_id.toString(),
+      payment_id: payment_id.toString()
+    };
+
+    // Add discount info to metadata if available
+    if (discount_info) {
+      metadata.discount_code = discount_info.code;
+      if (discount_info.amount) {
+        metadata.discount_amount = discount_info.amount.toString();
+      }
+    }
+
+    // Prepare line items array
+    const checkoutLineItems = [...line_items];
+    
+    // Add discount as a negative line item if applicable
+    if (discount_info && discount_info.amount && discount_info.amount > 0) {
+      // Convert discount amount to cents and ensure it's a negative value
+      const discountAmountInCents = Math.round(discount_info.amount * 100);
+      
+      checkoutLineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `Discount (${discount_info.code})`,
+            description: 'Applied discount code'
+          },
+          unit_amount: -discountAmountInCents,
+        },
+        quantity: 1
+      });
+    }
+
     // Create the checkout session
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams = {
       payment_method_types: ['card'],
-      line_items,
+      line_items: checkoutLineItems,
       mode: 'payment',
       success_url,
       cancel_url,
-      metadata: {
-        order_id,
-        user_id,
-        payment_id
-      }
-    });
+      metadata
+    };
+
+    console.log('Creating session with params:', sessionParams);
+    const session = await stripe.checkout.sessions.create(sessionParams);
+    console.log('Session created:', session.id);
 
     // Return the session ID and URL
     return new Response(

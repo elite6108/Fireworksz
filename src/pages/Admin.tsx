@@ -3,13 +3,14 @@ import { AdminProducts } from '../components/AdminProducts';
 import AdminOrders from '../components/AdminOrders';
 import ShippingSettings from '../components/ShippingSettings';
 import { CategorySettings } from '../components/CategorySettings';
-import { Package, ShoppingBag, Truck, Tag, Image } from 'lucide-react';
+import { DiscountCodeSettings } from '../components/DiscountCodeSettings';
+import { Package, ShoppingBag, Truck, Tag, Image, Percent } from 'lucide-react';
 import { useAuth } from '../store/auth';
 import { Navigate, Link } from 'react-router-dom';
 
 export function Admin() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'shipping' | 'categories'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'shipping' | 'categories' | 'discounts'>('products');
 
   // Check if user has admin role
   const isAdmin = user?.role === 'admin';
@@ -23,7 +24,7 @@ export function Admin() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Manage your products, shipping rates, and view customer orders
+          Manage your products, shipping rates, discount codes, and view customer orders
         </p>
       </div>
 
@@ -52,6 +53,18 @@ export function Admin() {
           >
             <Truck className="mr-2 h-5 w-5" />
             Shipping
+          </button>
+
+          <button
+            onClick={() => setActiveTab('discounts')}
+            className={`${
+              activeTab === 'discounts'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+            } flex items-center whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium`}
+          >
+            <Percent className="mr-2 h-5 w-5" />
+            Discount Codes
           </button>
 
           <button
@@ -94,6 +107,7 @@ export function Admin() {
         {activeTab === 'shipping' && <ShippingSettings />}
         {activeTab === 'orders' && <AdminOrders />}
         {activeTab === 'categories' && <CategorySettings />}
+        {activeTab === 'discounts' && <DiscountCodeSettings />}
       </div>
     </div>
   );
